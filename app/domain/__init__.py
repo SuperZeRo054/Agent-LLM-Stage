@@ -1,0 +1,41 @@
+"""domain 层：Pydantic 数据契约。"""
+
+from app.domain.schemas import (
+    Anomaly,
+    ErrorRecord,
+    EvaluationPlan,
+    JudgeConfig,
+    JudgeResult,
+    Metrics,
+    ModelConfig,
+    ModelMetrics,
+    ModelResult,
+    RiskFlag,
+    Rubric,
+    RunConfig,
+    RunStatus,
+    ScoreResult,
+    TaskItem,
+    TaskStatus,
+    TestCase,
+)
+
+__all__ = [
+    "Anomaly",
+    "ErrorRecord",
+    "EvaluationPlan",
+    "JudgeConfig",
+    "JudgeResult",
+    "Metrics",
+    "ModelConfig",
+    "ModelMetrics",
+    "ModelResult",
+    "RiskFlag",
+    "Rubric",
+    "RunConfig",
+    "RunStatus",
+    "ScoreResult",
+    "TestCase",
+    "TaskItem",
+    "TaskStatus",
+]

@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-llm-stage"
+version = "0.1.0"
+description = "基于 LangGraph 的 LLM 评测 Agent —— 规划、并发执行、盲评 Judge、指标聚合与可恢复报告"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "Agent-LLM-Stage" }]
+license = { text = "MIT" }
+
+# 阶段一核心运行依赖：Graph 骨架 + 模拟执行
+dependencies = [
+    "langgraph>=0.2.50",
+    "langchain-core>=0.3.0",
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+    "typer>=0.12",
+]
+
+[project.optional-dependencies]
+# 阶段二：真实模型接入
+phase2 = [
+    "langchain-openai>=0.2",
+    "httpx>=0.27",
+    "python-dotenv>=1.0",
+    "json-repair>=0.30",
+]
+# 阶段三：可信度与可展示性
+phase3 = [
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.2",
+    "supabase>=2.7",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "jinja2>=3.1",
+    "plotly>=5.20",
+    "langgraph-checkpoint-postgres>=2.0",
+]
+# 开发与质量
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.6",
+]
+
+[project.scripts]
+agent-llm-stage = "app.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]  # 行宽交给 formatter
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+python_classes = []  # 仅用函数式测试；避免收集领域模型 TestCase
+addopts = "-q"

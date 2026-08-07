@@ -1,0 +1,62 @@
+# 真实多供应商评测配置（阶段二）
+# ===========================================================================
+# 用法:
+#   1. cp .env.example .env，填入各供应商 API Key
+#   2. 按需增删下方 models 条目（复制一个块，改 model/base_url/api_key_env 即可）
+#   3. agent-llm-stage run --config configs/run.real.yaml --auto-approve
+#
+# 当前仅启用已填 API Key 的模型（DeepSeek / Kimi）；智谱、豆包因未填 key 暂注释，
+# 在 .env 填好对应 key 后取消注释即可纳入评测。
+# ===========================================================================
+
+run_name: multi-provider-comparison
+dataset: datasets/dataset_v1.jsonl
+
+models:
+  # ---- DeepSeek（已填 DEEPSEEK_API_KEY）----
+  - provider: provider_b
+    model: deepseek-v4-flash
+    base_url: https://api.deepseek.com/v1
+    api_key_env: DEEPSEEK_API_KEY
+    concurrency: 2
+    pricing: {input: 0.27, output: 1.10}
+
+  # ---- Kimi / 月之暗面（已填 MOONSHOT_API_KEY）----
+  # 注意：kimi-k3 仅允许 temperature=1，否则 HTTP 400。
+  - provider: provider_b
+    model: kimi-k3
+    base_url: https://api.moonshot.cn/v1
+    api_key_env: MOONSHOT_API_KEY
+    temperature: 1.0
+    concurrency: 2
+    pricing: {input: 1.67, output: 1.67}
+
+  # ---- 智谱 GLM（未填 ZHIPU_API_KEY，暂跳过；填好后取消注释）----
+  # - provider: provider_a
+  #   model: glm-4-plus
+  #   base_url: https://open.bigmodel.cn/api/paas/v4
+  #   api_key_env: ZHIPU_API_KEY
+  #   concurrency: 2
+  #   pricing: {input: 0.7, output: 0.7}
+
+  # ---- 豆包 / 火山方舟（未填 ARK_API_KEY，暂跳过；填好后取消注释）----
+  # - provider: provider_a
+  #   model: doubao-1.5-pro-32k
+  #   base_url: https://ark.cn-beijing.volces.com/api/v3
+  #   api_key_env: ARK_API_KEY
+  #   concurrency: 2
+  #   pricing: {input: 0.11, output: 0.28}
+
+# Judge（裁判）：glm-5.2 @ 火山方舟 coding 端点 + JUDGE_API_KEY。
+# 已冒烟验证可用（普通模式与 json_mode 均返回正常）。
+# 若需调整，改 provider/base_url/api_key_env/model 即可。
+judge:
+  provider: provider_a
+  model: glm-5.2
+  base_url: https://ark.cn-beijing.volces.com/api/coding/v3
+  api_key_env: JUDGE_API_KEY
+  repeats: 2
+  pricing: {input: 0.7, output: 0.7}
+
+budget_limit_usd: 2.0
+auto_approve: false

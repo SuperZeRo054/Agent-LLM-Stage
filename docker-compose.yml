@@ -1,0 +1,36 @@
+# 阶段三：可复现部署
+# 开发环境使用与生产同一份 PostgreSQL（无 SQLite 迁移步骤）
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: agent-llm-stage-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: agent_llm_stage
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_llm_stage"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # 阶段三启用：FastAPI 服务
+  # api:
+  #   build: .
+  #   container_name: agent-llm-stage-api
+  #   env_file: .env
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   ports:
+  #     - "8000:8000"
+  #   command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000
+
+volumes:
+  pgdata:

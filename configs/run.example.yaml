@@ -1,0 +1,26 @@
+# 评测运行配置示例
+# 用法: agent-llm-stage run --config configs/run.example.yaml
+run_name: model-comparison-v1
+dataset: datasets/dataset_v1.jsonl
+
+models:
+  - provider: fake
+    model: alpha
+    concurrency: 3
+  - provider: fake
+    model: beta
+    concurrency: 3
+  - provider: fake
+    model: gamma
+    concurrency: 3
+
+# Judge 配置：阶段一使用 fake judge；阶段二替换为真实 judge_model
+judge:
+  provider: fake
+  model: judge
+  repeats: 2
+
+budget_limit_usd: 10
+
+# 人工审批：CLI 中可用 --auto-approve 跳过；API/生产环境应保留
+auto_approve: false
