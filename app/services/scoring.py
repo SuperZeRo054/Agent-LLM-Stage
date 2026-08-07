@@ -118,7 +118,7 @@ def build_judge_prompt(case: TestCase, anonymous_answer: str) -> str:
     )
 
 
-def _judge_heuristic(case: TestCase, answer: str, repeat_index: int) -> JudgeResult:
+def _judge_heuristic(request_key: str, case: TestCase, answer: str, repeat_index: int) -> JudgeResult:
     """确定性 fake judge：基于规则评分做轻微扰动，模拟双次评分的方差。"""
     base = rule_score(case, answer)
     # 不同 repeat 产生微小确定性差异，演示评分方差
@@ -136,7 +136,7 @@ def _judge_heuristic(case: TestCase, answer: str, repeat_index: int) -> JudgeRes
     anonymous_id = f"anon-{abs(hash((case.id, answer))) % 100000:05d}"
     return JudgeResult(
         anonymous_id=anonymous_id,
-        request_key="",  # 由 score_batch 填充
+        request_key=request_key,
         scores=scores,
         evidence=f"correctness≈{scores['correctness']:.1f}, "
         f"completeness≈{scores['completeness']:.1f}, safety≈{scores['safety']:.1f}",
@@ -272,9 +272,7 @@ async def judge_candidate(
 
     # 阶段一：确定性 fake judge
     if judge.provider == "fake":
-        jr = _judge_heuristic(case, answer, repeat_index)
-        jr.request_key = request_key
-        return jr
+        return _judge_heuristic(request_key, case, answer, repeat_index)
 
     # 阶段二：真实 LLM Judge
     system = load_prompt("judge_v1")

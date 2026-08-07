@@ -84,7 +84,7 @@ async def test_validation_failure_unregistered_provider():
 
 
 @pytest.mark.asyncio
-async def test_no_candidates_all_failed_routes_to_failure_report():
+async def test_no_candidates_all_failed_routes_to_failure_report(tmp_path):
     """全部模型调用失败时走失败报告（用 beta 在安全用例必失败 + 单 case）。"""
     run_id = new_run_id("test-run")
     cfg = {"configurable": {"thread_id": run_id}}
@@ -100,10 +100,8 @@ async def test_no_candidates_all_failed_routes_to_failure_report():
     }
     # 用 case-004 单条数据集
     import json
-    import pathlib
-    import tempfile
 
-    tmp = pathlib.Path(tempfile.gettempdir()) / "single_case.jsonl"
+    tmp = tmp_path / "single_case.jsonl"
     tmp.write_text(
         json.dumps(
             {

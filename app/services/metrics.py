@@ -44,19 +44,18 @@ def calculate_metrics(
     models: list[ModelMetrics] = []
     anomalies: list[Anomaly] = []
 
-    # 按 model_id 分组
-    model_ids: list[str] = []
+    # 按 provider:model_id 分组（不同 provider 同名 model 不得合并）
+    model_keys: list[tuple[str, str]] = []  # (model_id, provider)
     seen: set[str] = set()
     for r in results:
         key = f"{r.provider}:{r.model_id}"
         if key not in seen:
             seen.add(key)
-            model_ids.append(r.model_id)
+            model_keys.append((r.model_id, r.provider))
 
     total_cost = 0.0
-    for mid in model_ids:
-        rs = [r for r in results if r.model_id == mid]
-        provider = rs[0].provider if rs else ""
+    for mid, provider in model_keys:
+        rs = [r for r in results if r.model_id == mid and r.provider == provider]
         count = len(rs)
         success = sum(1 for r in rs if r.status == TaskStatus.success)
         failure_rate = round(1 - (success / count) if count else 0.0, 4)
@@ -111,7 +110,7 @@ def calculate_metrics(
 
     return Metrics(
         run_id=run_id,
-        models=sorted(models, key=lambda m: m.model_id),
+        models=sorted(models, key=lambda m: (m.provider, m.model_id)),
         total_cost_usd=round(total_cost, 6),
         budget_limit_usd=budget_limit_usd,
         budget_exceeded=budget_exceeded,

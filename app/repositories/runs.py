@@ -48,14 +48,42 @@ class RunRepository:
             return json.loads(self.results_path.read_text("utf-8"))
         return {}
 
+    def _atomic_write(self, path: Path, data: dict) -> None:
+        """原子写入：先写临时文件再 rename，避免写入中途崩溃丢失全部数据。"""
+        import os
+        import tempfile
+
+        tmp_fd, tmp_path = tempfile.mkstemp(
+            suffix=".json", prefix=".tmp-", dir=str(self.run_dir)
+        )
+        try:
+            with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, str(path))
+        except Exception:
+            # 清理临时文件
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
+
     def upsert_model_result(self, result: ModelResult) -> None:
         data = self._load_results()
         data[result.request_key] = result.model_dump(mode="json")
-        self.results_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), "utf-8")
+        self._atomic_write(self.results_path, data)
 
     def load_model_results(self) -> list[ModelResult]:
         data = self._load_results()
         return [ModelResult(**v) for v in data.values()]
+
+    def load_result(self, request_key: str) -> ModelResult | None:
+        """按 request_key 加载单条结果，不存在返回 None。合并了 has_result + load 的 TOCTOU 窗口。"""
+        data = self._load_results()
+        entry = data.get(request_key)
+        if entry is None:
+            return None
+        return ModelResult(**entry)
 
     def has_result(self, request_key: str) -> bool:
         return request_key in self._load_results()
@@ -69,7 +97,7 @@ class RunRepository:
     def upsert_score_result(self, score: ScoreResult) -> None:
         data = self._load_scores()
         data[score.request_key] = score.model_dump(mode="json")
-        self.scores_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), "utf-8")
+        self._atomic_write(self.scores_path, data)
 
     def load_score_results(self) -> list[ScoreResult]:
         data = self._load_scores()

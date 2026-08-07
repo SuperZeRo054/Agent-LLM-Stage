@@ -39,9 +39,16 @@ def build_prompt(case: TestCase) -> tuple[str, list[str]]:
 
 
 async def _call_with_retry(
-    adapter, prompt: str, context: list[str], request_key: str
+    adapter,
+    prompt: str,
+    context: list[str],
+    request_key: str,
+    retries_counter: list[int] | None = None,
 ) -> RawModelOutput:
-    """带指数退避的重试。最终失败返回带 error 的输出。"""
+    """带指数退避的重试。最终失败返回带 error 的输出。
+
+    retries_counter: 用于回填实际重试次数（传入单元素列表，函数内原地修改）。
+    """
     last_error = ""
     for attempt in range(MAX_RETRIES):
         try:
@@ -49,11 +56,14 @@ async def _call_with_retry(
             if out.error:
                 # adapter 内部已判定失败（如 fake 的 beta 安全用例）
                 last_error = out.error
-                # 仍可重试，但确定性失败会耗尽次数
+                if retries_counter is not None:
+                    retries_counter[0] = attempt + 1
             else:
                 return out
         except Exception as e:  # noqa: BLE001
             last_error = f"{type(e).__name__}: {e}"
+        if retries_counter is not None:
+            retries_counter[0] = attempt + 1
         if attempt < MAX_RETRIES - 1:
             await asyncio.sleep(BACKOFF_BASE * (2**attempt))
     return RawModelOutput(answer="", error=last_error or "unknown error")
@@ -75,12 +85,11 @@ async def execute_batch(
     adapters = {key: get_adapter(cfg) for key, cfg in cfg_by_model.items()}
 
     async def run_one(task: TaskItem) -> ModelResult:
-        # 幂等：已完成则直接加载，跳过调用
-        if repo.has_result(task.request_key):
-            results = repo.load_model_results()
-            for r in results:
-                if r.request_key == task.request_key:
-                    return r
+        # 幂等：已完成则直接加载，跳过调用（单线程 asyncio 中无 TOCTOU 风险；
+        # 多 worker 场景应改为 repo.load_or_none(request_key) 原子操作）
+        existing = repo.load_result(task.request_key)
+        if existing is not None:
+            return existing
 
         cfg = cfg_by_model[f"{task.provider}:{task.model_id}"]
         adapter = adapters[f"{task.provider}:{task.model_id}"]
@@ -88,9 +97,12 @@ async def execute_batch(
         case = cases_by_id[task.case_id]
         prompt, context = build_prompt(case)
 
+        retries = 0
+        retries_counter: list[int] = [0]
         started = time.time()
         async with sem:
-            out = await _call_with_retry(adapter, prompt, context, task.request_key)
+            out = await _call_with_retry(adapter, prompt, context, task.request_key, retries_counter=retries_counter)
+        retries = retries_counter[0]
         ended = time.time()
 
         status = TaskStatus.success if not out.error else TaskStatus.failed
@@ -110,7 +122,7 @@ async def execute_batch(
             completion_tokens=out.completion_tokens,
             total_tokens=out.total_tokens,
             cost_usd=out.cost_usd,
-            retries=0,
+            retries=retries,
             status=status,
             error=out.error,
         )

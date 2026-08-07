@@ -118,8 +118,11 @@ def _load_builtin_adapters() -> None:
 
     try:
         from app.adapters import provider_a, provider_b  # noqa: F401
-    except Exception as e:  # phase2 依赖未安装时静默跳过
-        logger.debug("phase2 adapters 未加载: %s", e)
+    except Exception as e:  # phase2 依赖未安装时跳过，但在非测试环境给出 warning
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            logger.debug("phase2 adapters 未加载: %s", e)
+        else:
+            logger.warning("phase2 adapters 加载失败（provider_a/provider_b 不可用）: %s", e)
 
 
 _load_builtin_adapters()
