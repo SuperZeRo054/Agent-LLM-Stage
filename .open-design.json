@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "designSystem": {
+    "slug": "clickhouse",
+    "path": "design-systems/clickhouse"
+  },
+  "skill": {
+    "slug": "flowai-live-dashboard-template",
+    "path": "design-templates/flowai-live-dashboard-template",
+    "kind": "design-template",
+    "mode": "prototype"
+  },
+  "boundAt": "2026-08-08T00:00:00Z"
+}
